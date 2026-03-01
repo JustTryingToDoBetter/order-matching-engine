@@ -5,15 +5,19 @@
 #include <list>
 #include <map>
 #include <unordered_map>
+#include <vector>
 
 enum class Side { buy, sell };
 
 using OrderId = int;
 
+using Price = int;
+
+
 struct Order {
     OrderId id;
     Side side;
-    double price;
+    Price price;
     int qty;
 };
 
@@ -21,7 +25,7 @@ struct TradeSink {
     long long tradeCount = 0;
     long long totalQty = 0;
 
-    void onTrade(int qty, double price, OrderId taker, OrderId maker) {
+    void onTrade(int qty, Price price, OrderId taker, OrderId maker) {
         (void)price; (void)taker; (void)maker;
         tradeCount++;
         totalQty += qty;
@@ -33,13 +37,13 @@ struct PriceLevel {
     int totalQuantity = 0;
 };
 
-using Asks = std::map<double, PriceLevel>;                       // low -> high
-using Bids = std::map<double, PriceLevel, std::greater<double>>; // high -> low
+using Asks = std::map<Price, PriceLevel>;                       // low -> high
+using Bids = std::map<Price, PriceLevel, std::greater<Price>>; // high -> low
 using OrderIt = std::list<Order>::iterator;
 
 struct OrderRef {
     Side side;
-    double price;
+    Price price;
     OrderIt it;
 };
 
@@ -116,7 +120,7 @@ inline void matchIncoming(Asks& asks,
     if (incoming.side == Side::buy) {
         while (incoming.qty > 0 && !asks.empty()) {
             auto bestAskIt = asks.begin();
-            const double bestAskPrice = bestAskIt->first;
+            const Price bestAskPrice = bestAskIt->first;
 
             if (bestAskPrice > incoming.price) break;
 
@@ -151,7 +155,7 @@ inline void matchIncoming(Asks& asks,
     } else {
         while (incoming.qty > 0 && !bids.empty()) {
             auto bestBidIt = bids.begin();
-            const double bestBidPrice = bestBidIt->first;
+            const Price bestBidPrice = bestBidIt->first;
 
             if (bestBidPrice < incoming.price) break;
 
@@ -191,7 +195,7 @@ inline bool replaceOrder(Asks& asks,
                          Bids& bids,
                          std::unordered_map<OrderId, OrderRef>& index,
                          OrderId id,
-                         double newPrice,
+                         Price newPrice,
                          int newQty,
                          TradeSink& sink) {
     auto itRef = index.find(id);

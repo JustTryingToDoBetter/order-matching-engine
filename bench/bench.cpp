@@ -8,7 +8,7 @@
 // Generate a random price around 100.00 with +/- 50 ticks (0.01).
 static double randPrice(std::mt19937& rng){
     std::uniform_int_distribution<int> ticks(-50, 50);
-    return 100.0 + ticks(rng) * 0.01;
+    return 1000 +ticks(rng); // 1000 is mid-price in ticks
 }
 
 int main(){
@@ -36,7 +36,7 @@ int main(){
         int r = opDist(rng);
         if (r < 60){
             Side side = sideDist(rng) == 0 ? Side::buy : Side::sell; // random side
-            double price = randPrice(rng); // random price around 100.00
+            Price price = randPrice(rng); // random price around 100.00
             int qty = qtyDist(rng); // random quantity
             int id = nextId++; // assign unique ID
 
