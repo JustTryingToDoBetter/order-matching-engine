@@ -1,9 +1,8 @@
 #include <algorithm>   // std::min
-#include <deque>
 #include <functional>  // std::greater
 #include <iostream>
+#include <list>
 #include <map>
-#include <optional>
 #include <unordered_map>
 
 enum class Side { buy, sell };
@@ -20,40 +19,59 @@ struct Order {
 };
 
 struct PriceLevel {
-    std::deque<Order> fifo;
-    int totalQuantity = 0;
+    std::list<Order> fifo;   // FIFO queue at this price
+    int totalQuantity = 0;   // sum of remaining qty at this price
 };
 
 using Asks = std::map<double, PriceLevel>;                       // low -> high
 using Bids = std::map<double, PriceLevel, std::greater<double>>; // high -> low
 
-/// --- We need to track side + price for cancellations. This is our "index" value.
+using OrderIt = std::list<Order>::iterator;
+
+// We track side + price + iterator for O(1) cancel/replace.
 struct OrderRef {
     Side side;
     double price;
+    OrderIt it; // points to the live order inside its price level FIFO
 };
 
-// --- Add an order to the book AND index it by id.
-void addToBook(Asks& asks,
+// Forward declare (needed because replaceOrder calls matchIncoming).
+void matchIncoming(Asks& asks,
+                   Bids& bids,
+                   std::unordered_map<OrderId, OrderRef>& index,
+                   Order incoming);
+
+// Add an order to the book AND index it by id.
+// Returns false if duplicate id.
+bool addToBook(Asks& asks,
                Bids& bids,
                std::unordered_map<OrderId, OrderRef>& index,
                const Order& o) {
-    // If you want strictness: reject duplicate IDs.
-    // For now, we’ll overwrite (not ideal). We'll harden later.
-    index[o.id] = OrderRef{o.side, o.price};
+    if (o.qty <= 0) return false;
+
+    // Portfolio-grade: reject duplicate IDs.
+    if (index.find(o.id) != index.end()) return false;
 
     if (o.side == Side::sell) {
         PriceLevel& level = asks[o.price];
         level.fifo.push_back(o);
         level.totalQuantity += o.qty;
+
+        auto it = std::prev(level.fifo.end());
+        index.emplace(o.id, OrderRef{o.side, o.price, it});
     } else {
         PriceLevel& level = bids[o.price];
         level.fifo.push_back(o);
         level.totalQuantity += o.qty;
+
+        auto it = std::prev(level.fifo.end());
+        index.emplace(o.id, OrderRef{o.side, o.price, it});
     }
+
+    return true;
 }
 
-// --- Cancel by id (v1: scan deque at that price).
+// Cancel by id (O(1) remove using stored iterator).
 // Returns true if cancelled, false if id not found.
 bool cancelOrder(Asks& asks,
                  Bids& bids,
@@ -64,6 +82,7 @@ bool cancelOrder(Asks& asks,
 
     const Side side = itRef->second.side;
     const double price = itRef->second.price;
+    OrderIt orderIt = itRef->second.it;
 
     auto cancelFromLevel = [&](auto& book) -> bool {
         auto itLevel = book.find(price);
@@ -71,60 +90,45 @@ bool cancelOrder(Asks& asks,
 
         PriceLevel& level = itLevel->second;
 
-        // Find the order in FIFO
-        for (auto it = level.fifo.begin(); it != level.fifo.end(); ++it) {
-            if (it->id == id) {
-                // Update totals first
-                level.totalQuantity -= it->qty;
+        // Safety check: if iterator points to wrong order, something broke.
+        // (Should never happen if we reject duplicate IDs and update index correctly.)
+        if (orderIt == level.fifo.end() || orderIt->id != id) return false;
 
-                // Remove order
-                level.fifo.erase(it);
+        level.totalQuantity -= orderIt->qty;
+        level.fifo.erase(orderIt);
 
-                // Clean up empty price levels
-                if (level.fifo.empty()) {
-                    book.erase(itLevel);
-                }
-
-                // Remove from index
-                index.erase(itRef);
-                return true;
-            }
+        if (level.fifo.empty()) {
+            book.erase(itLevel);
         }
-        return false;
+
+        index.erase(itRef);
+        return true;
     };
 
     if (side == Side::sell) return cancelFromLevel(asks);
     return cancelFromLevel(bids);
 }
 
-
+// Replace: cancel old and treat new order as an incoming order (may execute immediately).
 bool replaceOrder(Asks& asks,
                   Bids& bids,
-                  std::unordered_map<OrderId, OrderRef>& index, 
+                  std::unordered_map<OrderId, OrderRef>& index,
                   OrderId id,
                   double newPrice,
                   int newQty) {
-    auto itRef = index.find(id); // Find the order in the index
-    if (itRef == index.end()) return false; // ID not found
+    auto itRef = index.find(id);
+    if (itRef == index.end()) return false;
 
-    const Side side = itRef->second.side; // Get the side and price from the index
-    const double oldPrice = itRef->second.price; // We might need this if we want to optimize the cancel step later
+    const Side side = itRef->second.side;
 
-    // Cancel the existing order
-    if (!cancelOrder(asks, bids, index, id)) {
-        return false; // Should not happen since we found the ID in the index
-    }
+    if (!cancelOrder(asks, bids, index, id)) return false;
 
-    // Add the new order with the same ID but updated price and quantity
-    addToBook(asks, bids, index, Order{id, side, newPrice, newQty});
-    // matchIncoming can also be used here instead of addToBook if we want the replace to potentially execute immediately against the book. For now, we'll keep it simple and just add to book.
+    // Important: do NOT addToBook() first; matchIncoming will add remainder exactly once.
     matchIncoming(asks, bids, index, Order{id, side, newPrice, newQty});
     return true;
 }
 
-
-
-// --- Matching (kept simple). Emits trades to stdout for now.
+// Matching. Emits trades to stdout for now.
 void matchIncoming(Asks& asks,
                    Bids& bids,
                    std::unordered_map<OrderId, OrderRef>& index,
@@ -139,21 +143,29 @@ void matchIncoming(Asks& asks,
             if (bestAskPrice > incoming.price) break;
 
             PriceLevel& level = bestAskIt->second;
-            Order& maker = level.fifo.front();
 
-            const int fill = std::min(incoming.qty, maker.qty);
+            // Match against FIFO at this price
+            while (incoming.qty > 0 && !level.fifo.empty()) {
+                auto makerIt = level.fifo.begin();
+                Order& maker = *makerIt;
 
-            maker.qty -= fill;
-            incoming.qty -= fill;
-            level.totalQuantity -= fill;
+                const int fill = std::min(incoming.qty, maker.qty);
 
-            std::cout << "Trade: qty=" << fill << " @ " << bestAskPrice
-                      << " (buy " << incoming.id << " vs sell " << maker.id << ")\n";
+                maker.qty -= fill;
+                incoming.qty -= fill;
+                level.totalQuantity -= fill;
 
-            if (maker.qty == 0) {
-                // Maker fully filled -> remove from index + FIFO
-                index.erase(maker.id);
-                level.fifo.pop_front();
+                std::cout << "Trade: qty=" << fill << " @ " << bestAskPrice
+                          << " (buy " << incoming.id << " vs sell " << maker.id << ")\n";
+
+                if (maker.qty == 0) {
+                    // Maker fully filled -> remove from index + FIFO
+                    index.erase(maker.id);
+                    level.fifo.erase(makerIt);
+                } else {
+                    // Maker still resting at front; stop matching this level only if incoming is done.
+                    // Otherwise continue (incoming may still have qty).
+                }
             }
 
             if (level.fifo.empty()) {
@@ -162,7 +174,12 @@ void matchIncoming(Asks& asks,
         }
 
         if (incoming.qty > 0) {
-            addToBook(asks, bids, index, incoming);
+            // Remainder becomes resting
+            if (!addToBook(asks, bids, index, incoming)) {
+                // Duplicate ID or invalid qty; in a real engine you'd reject upstream.
+                // For portfolio: fail loudly in debug builds.
+                std::cerr << "ERROR: failed to add remainder for id=" << incoming.id << "\n";
+            }
         }
     } else {
         while (incoming.qty > 0 && !bids.empty()) {
@@ -172,20 +189,24 @@ void matchIncoming(Asks& asks,
             if (bestBidPrice < incoming.price) break;
 
             PriceLevel& level = bestBidIt->second;
-            Order& maker = level.fifo.front();
 
-            const int fill = std::min(incoming.qty, maker.qty);
+            while (incoming.qty > 0 && !level.fifo.empty()) {
+                auto makerIt = level.fifo.begin();
+                Order& maker = *makerIt;
 
-            maker.qty -= fill;
-            incoming.qty -= fill;
-            level.totalQuantity -= fill;
+                const int fill = std::min(incoming.qty, maker.qty);
 
-            std::cout << "Trade: qty=" << fill << " @ " << bestBidPrice
-                      << " (sell " << incoming.id << " vs buy " << maker.id << ")\n";
+                maker.qty -= fill;
+                incoming.qty -= fill;
+                level.totalQuantity -= fill;
 
-            if (maker.qty == 0) {
-                index.erase(maker.id);
-                level.fifo.pop_front();
+                std::cout << "Trade: qty=" << fill << " @ " << bestBidPrice
+                          << " (sell " << incoming.id << " vs buy " << maker.id << ")\n";
+
+                if (maker.qty == 0) {
+                    index.erase(maker.id);
+                    level.fifo.erase(makerIt);
+                }
             }
 
             if (level.fifo.empty()) {
@@ -194,7 +215,9 @@ void matchIncoming(Asks& asks,
         }
 
         if (incoming.qty > 0) {
-            addToBook(asks, bids, index, incoming);
+            if (!addToBook(asks, bids, index, incoming)) {
+                std::cerr << "ERROR: failed to add remainder for id=" << incoming.id << "\n";
+            }
         }
     }
 }
@@ -225,14 +248,13 @@ void printTop(const Asks& asks, const Bids& bids) {
     }
 }
 
-
-static int nextOrderId = 100; // For generating new order IDs in tests if needed.
-static int newOrderId() { return nextOrderId++; }
-
 int main() {
     Asks asks;
     Bids bids;
     std::unordered_map<OrderId, OrderRef> index;
+
+    // Good habit: reserve for performance / stability in benchmarks.
+    index.reserve(1024);
 
     // Seed book
     addToBook(asks, bids, index, Order{1, Side::sell, 100.5, 5});
@@ -240,12 +262,13 @@ int main() {
     addToBook(asks, bids, index, Order{3, Side::buy,  99.8,  4});
     addToBook(asks, bids, index, Order{4, Side::buy,  99.9,  6});
 
-    std::cout << "=== Before cancel ===\n";
+    std::cout << "=== Before replace/cancel ===\n";
     printTop(asks, bids);
 
     std::cout << "\n=== Replace BUY id=4 -> new price 101.0 qty 6 ===\n";
     std::cout << (replaceOrder(asks, bids, index, 4, 101.0, 6) ? "REPLACED\n" : "REPLACE FAILED\n");
     printTop(asks, bids);
+
     std::cout << "\nCancel order id=2...\n";
     std::cout << (cancelOrder(asks, bids, index, 2) ? "CANCELLED\n" : "NOT FOUND\n");
     printTop(asks, bids);
