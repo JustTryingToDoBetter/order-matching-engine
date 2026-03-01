@@ -1,9 +1,12 @@
-#include "engine.hpp"
+#include "engine_array.hpp"
 
 #include <iostream>
 #include <random>
 #include <chrono>
 #include <vector>
+
+OrderBook book;
+TradeSink sink;
 
 // Generate a random price around 100.00 with +/- 50 ticks (0.01).
 static double randPrice(std::mt19937& rng){
@@ -12,9 +15,7 @@ static double randPrice(std::mt19937& rng){
 }
 
 int main(){
-    constexpr int N = 1'000'000; // number of orders to simulate
-    Asks asks; // low -> high
-    Bids bids; // high -> low
+    constexpr int N = 5'000'000; // number of orders to simulate
     std::unordered_map<OrderId, OrderRef> index; // id -> (side, price, iterator)
     index.reserve(N); // reserve for performance / stability in benchmarks
 
@@ -40,7 +41,7 @@ int main(){
             int qty = qtyDist(rng); // random quantity
             int id = nextId++; // assign unique ID
 
-            matchIncoming(asks, bids, index, Order{id, side, price, qty}, sink);
+            book.matchIncoming(Order{id, side, price, qty}, sink);
 
             if (index.find(id) != index.end()) liveIDs.push_back(id); // track live order ID   
             
@@ -52,7 +53,7 @@ int main(){
                 int id = liveIDs[pos]; // get order ID to cancel
 
                 //swap pop on success or stale
-                (void)cancelOrder(asks, bids, index, id); // cancel order, ignore result (could be already filled/cancelled)
+                (void)book.cancel(id); // cancel order, ignore result (could be already filled/cancelled)
                 liveIDs[pos] = liveIDs.back(); // swap with last
                 liveIDs.pop_back(); // remove last
             }
@@ -65,7 +66,7 @@ int main(){
                 double newPrice = randPrice(rng); // new random price
                 int newQty = qtyDist(rng); // new random quantity
 
-                (void) replaceOrder(asks,bids, index, id, newPrice, newQty, sink); // replace order, ignore result (could be already filled/cancelled   )
+                book.replace(id, newPrice, newQty, sink); // replace order, ignore result (could be already filled/cancelled   )
         }
     }
 
@@ -77,7 +78,7 @@ int main(){
     std::cout << "Ops/sec: " << (N / dt.count()) << "\n";
     std::cout << "Trades: " << sink.tradeCount << "\n";
     std::cout << "Total filled qty: " << sink.totalQty << "\n";
-    std::cout << "Live orders: " << index.size() << "\n";
+    std::cout << "Live orders: " << book.liveOrders() << "\n";
 }
 
 }

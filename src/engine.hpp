@@ -38,7 +38,7 @@ struct PriceLevel {
 };
 
 using Asks = std::map<Price, PriceLevel>;                       // low -> high
-using Bids = std::map<Price, PriceLevel, std::greater<Price>>; // high -> low
+using Bids = std::map<double, PriceLevel, std::greater<double>>; // high -> low
 using OrderIt = std::list<Order>::iterator;
 
 struct OrderRef {
