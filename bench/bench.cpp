@@ -1,11 +1,11 @@
-#include "engine_array.hpp"
+#include "engine_pool.hpp"
 
 #include <iostream>
 #include <random>
 #include <chrono>
 #include <vector>
 
-OrderBook book;
+OrderBookPool book(200000);
 TradeSink sink;
 
 // Generate a random price around 100.00 with +/- 50 ticks (0.01).
