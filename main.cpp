@@ -1,36 +1,50 @@
-#include <iostream>
-#include <map>
+#include <algorithm>   // std::min
 #include <deque>
 #include <functional>  // std::greater
-#include <algorithm>   // std::min
+#include <iostream>
+#include <map>
+#include <optional>
+#include <unordered_map>
 
-// Keep your existing enum names for consistency
 enum class Side { buy, sell };
 
+using OrderId = int;
+
+// NOTE: still using double for now because you chose it.
+// We'll migrate to integer ticks later.
 struct Order {
-    int id;
+    OrderId id;
     Side side;
-    double price;  // Note: doubles are OK for a toy; real systems use integer ticks
+    double price;
     int qty;
 };
 
-// Each price level: FIFO of maker orders + running total for fast top-of-book
 struct PriceLevel {
-    std::deque<Order> fifo;  // FIFO queue at this price
-    int totalQuantity = 0;   // sum of remaining qty at this price
+    std::deque<Order> fifo;
+    int totalQuantity = 0;
 };
 
-// Order books
-using Asks = std::map<double, PriceLevel>;                           // lowest price first
-using Bids = std::map<double, PriceLevel, std::greater<double>>;     // highest price first
+using Asks = std::map<double, PriceLevel>;                       // low -> high
+using Bids = std::map<double, PriceLevel, std::greater<double>>; // high -> low
 
-// Push an order into the appropriate book (does NOT try to match)
-// - appends to FIFO
-// - increments totalQuantity
-void addToBook(Asks& asks, Bids& bids, const Order& o) {
+/// --- We need to track side + price for cancellations. This is our "index" value.
+struct OrderRef {
+    Side side;
+    double price;
+};
+
+// --- Add an order to the book AND index it by id.
+void addToBook(Asks& asks,
+               Bids& bids,
+               std::unordered_map<OrderId, OrderRef>& index,
+               const Order& o) {
+    // If you want strictness: reject duplicate IDs.
+    // For now, we’ll overwrite (not ideal). We'll harden later.
+    index[o.id] = OrderRef{o.side, o.price};
+
     if (o.side == Side::sell) {
-        PriceLevel& level = asks[o.price];   // creates level if absent
-        level.fifo.push_back(o);             // FIFO: new order to the back
+        PriceLevel& level = asks[o.price];
+        level.fifo.push_back(o);
         level.totalQuantity += o.qty;
     } else {
         PriceLevel& level = bids[o.price];
@@ -39,84 +53,125 @@ void addToBook(Asks& asks, Bids& bids, const Order& o) {
     }
 }
 
-// Try to match an incoming order against the opposite book (FIFO within price)
-// - Buy matches vs asks while best ask price <= incoming.price
-// - Sell matches vs bids while best bid price >= incoming.price
-// - Generates "trades" (just std::cout here)
-// - Any remaining qty is added to the appropriate book
-void matchIncoming(Asks& asks, Bids& bids, Order incoming) {
+// --- Cancel by id (v1: scan deque at that price).
+// Returns true if cancelled, false if id not found.
+bool cancelOrder(Asks& asks,
+                 Bids& bids,
+                 std::unordered_map<OrderId, OrderRef>& index,
+                 OrderId id) {
+    auto itRef = index.find(id);
+    if (itRef == index.end()) return false;
+
+    const Side side = itRef->second.side;
+    const double price = itRef->second.price;
+
+    auto cancelFromLevel = [&](auto& book) -> bool {
+        auto itLevel = book.find(price);
+        if (itLevel == book.end()) return false;
+
+        PriceLevel& level = itLevel->second;
+
+        // Find the order in FIFO
+        for (auto it = level.fifo.begin(); it != level.fifo.end(); ++it) {
+            if (it->id == id) {
+                // Update totals first
+                level.totalQuantity -= it->qty;
+
+                // Remove order
+                level.fifo.erase(it);
+
+                // Clean up empty price levels
+                if (level.fifo.empty()) {
+                    book.erase(itLevel);
+                }
+
+                // Remove from index
+                index.erase(itRef);
+                return true;
+            }
+        }
+        return false;
+    };
+
+    if (side == Side::sell) return cancelFromLevel(asks);
+    return cancelFromLevel(bids);
+}
+
+// --- Matching (kept simple). Emits trades to stdout for now.
+void matchIncoming(Asks& asks,
+                   Bids& bids,
+                   std::unordered_map<OrderId, OrderRef>& index,
+                   Order incoming) {
     if (incoming.qty <= 0) return;
 
     if (incoming.side == Side::buy) {
-        // Match vs best asks
         while (incoming.qty > 0 && !asks.empty()) {
-            auto bestAskIt = asks.begin();          // lowest ask
-            double bestAskPrice = bestAskIt->first; // price key
+            auto bestAskIt = asks.begin();
+            const double bestAskPrice = bestAskIt->first;
 
-            if (bestAskPrice > incoming.price) break; // no more marketable asks
+            if (bestAskPrice > incoming.price) break;
 
             PriceLevel& level = bestAskIt->second;
-            Order& maker = level.fifo.front();      // FIFO head at that price
+            Order& maker = level.fifo.front();
 
-            int fill = std::min(incoming.qty, maker.qty);
+            const int fill = std::min(incoming.qty, maker.qty);
+
             maker.qty -= fill;
-            level.totalQuantity -= fill;
             incoming.qty -= fill;
+            level.totalQuantity -= fill;
 
-            std::cout << "Trade: qty=" << fill
-                      << " @ " << bestAskPrice
-                      << " (buy " << incoming.id
-                      << " vs sell " << maker.id << ")\n";
+            std::cout << "Trade: qty=" << fill << " @ " << bestAskPrice
+                      << " (buy " << incoming.id << " vs sell " << maker.id << ")\n";
 
             if (maker.qty == 0) {
+                // Maker fully filled -> remove from index + FIFO
+                index.erase(maker.id);
                 level.fifo.pop_front();
             }
-            if (level.fifo.empty() || level.totalQuantity == 0) {
-                asks.erase(bestAskIt);  // price level empty -> remove
+
+            if (level.fifo.empty()) {
+                asks.erase(bestAskIt);
             }
         }
 
-        // If not fully matched, rest becomes a bid
         if (incoming.qty > 0) {
-            addToBook(asks, bids, incoming);
+            addToBook(asks, bids, index, incoming);
         }
     } else {
-        // Sell: match vs best bids
         while (incoming.qty > 0 && !bids.empty()) {
-            auto bestBidIt = bids.begin();          // highest bid
-            double bestBidPrice = bestBidIt->first;
+            auto bestBidIt = bids.begin();
+            const double bestBidPrice = bestBidIt->first;
 
-            if (bestBidPrice < incoming.price) break; // no more marketable bids
+            if (bestBidPrice < incoming.price) break;
 
             PriceLevel& level = bestBidIt->second;
             Order& maker = level.fifo.front();
 
-            int fill = std::min(incoming.qty, maker.qty);
-            maker.qty -= fill;
-            level.totalQuantity -= fill;
-            incoming.qty -= fill;
+            const int fill = std::min(incoming.qty, maker.qty);
 
-            std::cout << "Trade: qty=" << fill
-                      << " @ " << bestBidPrice
-                      << " (sell " << incoming.id
-                      << " vs buy " << maker.id << ")\n";
+            maker.qty -= fill;
+            incoming.qty -= fill;
+            level.totalQuantity -= fill;
+
+            std::cout << "Trade: qty=" << fill << " @ " << bestBidPrice
+                      << " (sell " << incoming.id << " vs buy " << maker.id << ")\n";
 
             if (maker.qty == 0) {
+                index.erase(maker.id);
                 level.fifo.pop_front();
             }
-            if (level.fifo.empty() || level.totalQuantity == 0) {
+
+            if (level.fifo.empty()) {
                 bids.erase(bestBidIt);
             }
         }
 
-        // If not fully matched, rest becomes an ask
         if (incoming.qty > 0) {
-            addToBook(asks, bids, incoming);
+            addToBook(asks, bids, index, incoming);
         }
     }
 }
 
-// Helpers to print top of book (for debugging)
 void printTop(const Asks& asks, const Bids& bids) {
     if (!asks.empty()) {
         auto it = asks.begin();
@@ -146,24 +201,27 @@ void printTop(const Asks& asks, const Bids& bids) {
 int main() {
     Asks asks;
     Bids bids;
+    std::unordered_map<OrderId, OrderRef> index;
 
-    // Seed book with a couple of makers
-    addToBook(asks, bids, Order{1, Side::sell, 100.5, 5}); // sell @100.5
-    addToBook(asks, bids, Order{2, Side::sell, 100.5, 2}); // same price (FIFO grows)
-    addToBook(asks, bids, Order{3, Side::buy,  99.8,  4}); // buy @99.8
-    addToBook(asks, bids, Order{4, Side::buy,  99.9,  6}); // buy @99.9 (best bid)
+    // Seed book
+    addToBook(asks, bids, index, Order{1, Side::sell, 100.5, 5});
+    addToBook(asks, bids, index, Order{2, Side::sell, 100.5, 2});
+    addToBook(asks, bids, index, Order{3, Side::buy,  99.8,  4});
+    addToBook(asks, bids, index, Order{4, Side::buy,  99.9,  6});
 
-    std::cout << "=== Before incoming ===\n";
+    std::cout << "=== Before cancel ===\n";
     printTop(asks, bids);
 
-    // Incoming BUY that should match asks up to price 101.0
+    std::cout << "\nCancel order id=2...\n";
+    std::cout << (cancelOrder(asks, bids, index, 2) ? "CANCELLED\n" : "NOT FOUND\n");
+    printTop(asks, bids);
+
     std::cout << "\n=== Incoming BUY id=10 @101.0 qty=6 ===\n";
-    matchIncoming(asks, bids, Order{10, Side::buy, 101.0, 6});
+    matchIncoming(asks, bids, index, Order{10, Side::buy, 101.0, 6});
     printTop(asks, bids);
 
-    // Incoming SELL that should match bids down to price 99.8
-    std::cout << "\n=== Incoming SELL id=11 @99.8 qty=5 ===\n";
-    matchIncoming(asks, bids, Order{11, Side::sell, 99.8, 5});
+    std::cout << "\nCancel order id=1...\n";
+    std::cout << (cancelOrder(asks, bids, index, 1) ? "CANCELLED\n" : "NOT FOUND\n");
     printTop(asks, bids);
 
     return 0;
