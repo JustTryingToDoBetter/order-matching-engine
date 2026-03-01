@@ -97,6 +97,33 @@ bool cancelOrder(Asks& asks,
     return cancelFromLevel(bids);
 }
 
+
+bool replaceOrder(Asks& asks,
+                  Bids& bids,
+                  std::unordered_map<OrderId, OrderRef>& index, 
+                  OrderId id,
+                  double newPrice,
+                  int newQty) {
+    auto itRef = index.find(id); // Find the order in the index
+    if (itRef == index.end()) return false; // ID not found
+
+    const Side side = itRef->second.side; // Get the side and price from the index
+    const double oldPrice = itRef->second.price; // We might need this if we want to optimize the cancel step later
+
+    // Cancel the existing order
+    if (!cancelOrder(asks, bids, index, id)) {
+        return false; // Should not happen since we found the ID in the index
+    }
+
+    // Add the new order with the same ID but updated price and quantity
+    addToBook(asks, bids, index, Order{id, side, newPrice, newQty});
+    // matchIncoming can also be used here instead of addToBook if we want the replace to potentially execute immediately against the book. For now, we'll keep it simple and just add to book.
+    matchIncoming(asks, bids, index, Order{id, side, newPrice, newQty});
+    return true;
+}
+
+
+
 // --- Matching (kept simple). Emits trades to stdout for now.
 void matchIncoming(Asks& asks,
                    Bids& bids,
@@ -198,6 +225,10 @@ void printTop(const Asks& asks, const Bids& bids) {
     }
 }
 
+
+static int nextOrderId = 100; // For generating new order IDs in tests if needed.
+static int newOrderId() { return nextOrderId++; }
+
 int main() {
     Asks asks;
     Bids bids;
@@ -212,6 +243,9 @@ int main() {
     std::cout << "=== Before cancel ===\n";
     printTop(asks, bids);
 
+    std::cout << "\n=== Replace BUY id=4 -> new price 101.0 qty 6 ===\n";
+    std::cout << (replaceOrder(asks, bids, index, 4, 101.0, 6) ? "REPLACED\n" : "REPLACE FAILED\n");
+    printTop(asks, bids);
     std::cout << "\nCancel order id=2...\n";
     std::cout << (cancelOrder(asks, bids, index, 2) ? "CANCELLED\n" : "NOT FOUND\n");
     printTop(asks, bids);
