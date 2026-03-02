@@ -74,6 +74,26 @@ Artifacts generated in repo root:
 - `perf_report.txt` (`perf report --stdio` output)
 - `perf.script` (`perf script` output; flamegraph-ready)
 
+### How to reproduce perf in Codespaces
+
+```bash
+make clean
+make perf-check
+make perf-quick PERF_MODE=maintenance PERF_SEED=12345
+```
+
+Then inspect `perf_report.txt` and verify hot symbols are in `OrderBookPool`/`NodePool` paths rather than allocator rehash paths.
+
+## Correctness updates
+
+- Benchmark LiveSet is now synchronized from engine outcomes:
+	- add IDs only when `matchIncoming(...)` returns a resting result;
+	- keep/remove IDs on replace using `ReplaceResult::rested()`;
+	- prune filled maker IDs via `TradeSink::closedOrderIds`.
+- Deterministic workload test (50k ops, fixed seed) asserts:
+	- `live_count_engine == live_count_benchmark`
+	- trade count and total filled quantity are repeatable across runs.
+
 ## Architecture overview (MVP)
 
 The MVP engine (`OrderBookPool`) is optimized around predictable memory access and low allocator overhead:
@@ -82,6 +102,11 @@ The MVP engine (`OrderBookPool`) is optimized around predictable memory access a
 - **Intrusive FIFO nodes**: each price level is a doubly-linked intrusive queue (`head/tail`) preserving time priority.
 - **Pool allocator**: a freelist-backed `NodePool` recycles order nodes to minimize allocation churn.
 - **Vector ID index**: `std::vector<OrderRef>` maps dense order IDs directly to node references for O(1) cancel/replace lookup.
+
+## Performance notes
+
+- Hot benchmark/exchange path (`OrderBookPool` in `engine_pool.hpp`) uses dense vector indexing for order-id lookup/cancel/replace and avoids `std::unordered_map` in the runtime matching loop.
+- Legacy reference headers (`engine_array.hpp`, `engine.hpp`) still contain `std::unordered_map` implementations for comparison/earlier iterations; they are not used by the default benchmark/exchange executable path.
 
 ## Benchmark results (before/after MVP)
 
