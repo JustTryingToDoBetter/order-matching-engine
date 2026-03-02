@@ -117,7 +117,10 @@ run_profile() {
 }
 
 run_quick() {
-  PERF_OPS="${PERF_OPS:-200000}" run_profile "$@"
+  local old_ops="${PERF_OPS:-}"
+  export PERF_OPS="${PERF_OPS:-200000}"
+  run_profile "$@"
+  if [[ -n "$old_ops" ]]; then export PERF_OPS="$old_ops"; else unset PERF_OPS; fi
 }
 
 cmd="${1:-}"
