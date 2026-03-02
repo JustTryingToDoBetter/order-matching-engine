@@ -46,4 +46,4 @@ test-deterministic: tests/engine_deterministic_tests.cpp src/engine_pool.hpp
 	./engine_deterministic_tests
 
 clean:
-	rm -f bench_run exchange engine_deterministic_tests perf.data perf.data.old perf_report.txt perf.script
+	rm -f bench_run exchange exhange engine_deterministic_tests main perf.data perf.data.old perf_report.txt perf.script src/perf.data
