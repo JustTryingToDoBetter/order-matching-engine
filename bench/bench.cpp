@@ -1,5 +1,6 @@
 #include "engine_pool.hpp"
 
+#include <cassert>
 #include <chrono>
 #include <cstdint>
 #include <iostream>
@@ -162,6 +163,7 @@ int main(int argc, char** argv) {
 
             int qty = (int)randBounded(rng, 10) + 1;
             OrderId id = nextId++;
+            opOrderId = id;
 
             AddResult addResult = book.matchIncoming(Order{id, side, p, qty}, sink);
             if (isRestingResult(addResult)) {
@@ -169,8 +171,10 @@ int main(int argc, char** argv) {
             }
 
         } else if (r <= cfg.addPct + cfg.cancelPct) {
+            opType = "cancel";
             if (!live.empty()) {
                 OrderId id = live.pick(rng);
+                opOrderId = id;
                 if (book.cancel(id)) {
                     live.remove(id);
                 } else {
@@ -180,8 +184,10 @@ int main(int argc, char** argv) {
             }
 
         } else {
+            opType = "replace";
             if (!live.empty()) {
                 OrderId id = live.pick(rng);
+                opOrderId = id;
                 Price newP = randPrice(rng);
                 if (cfg.mode == "match") {
                     // keep replacements somewhat aggressive too
@@ -201,6 +207,11 @@ int main(int argc, char** argv) {
 
         pruneClosedOrders(live, sink);
     }
+
+#ifndef NDEBUG
+    reconcileLiveSet(book, live);
+    assertBenchInvariant(book, live, cfg.ops, "final", -1);
+#endif
 
     auto t1 = std::chrono::steady_clock::now();
     std::chrono::duration<double> dt = t1 - t0;

@@ -227,6 +227,7 @@ public:
                     if (maker.qty == 0) {
                         sink.onOrderClosed(maker.id);
                         clearIndexSlot(maker.id);
+                        --live_order_count;
                         level.pop_front();
                         pool.free(makerNode);
                     } else {
@@ -264,6 +265,7 @@ public:
                     if (maker.qty == 0) {
                         sink.onOrderClosed(maker.id);
                         clearIndexSlot(maker.id);
+                        --live_order_count;
                         level.pop_front();
                         pool.free(makerNode);
                     } else {
@@ -299,7 +301,7 @@ public:
         level.totalQuantity -= n->o.qty;
         level.erase(n);
 
-        ref.clear();
+        clearIndexSlot(id);
         --live_order_count;
         pool.free(n);
 
@@ -323,6 +325,10 @@ public:
     }
 
     inline std::size_t liveOrders() const { return live_order_count; }
+    inline std::size_t indexLiveCount() const { return index_live_count; }
+    inline bool isLive(OrderId id) const {
+        return isValidId(id) && index[static_cast<std::size_t>(id)].isValid();
+    }
 
 private:
     std::vector<PriceLevel> bidLevels;
@@ -331,6 +337,7 @@ private:
     std::vector<OrderRef> index;
     NodePool pool;
     std::size_t live_order_count = 0;
+    std::size_t index_live_count = 0;
 
     int bestBidIdx = -1;
     int bestAskIdx = NUM_LEVELS;
@@ -348,7 +355,7 @@ private:
         if (!ref.isValid()) return;
 
         ref.clear();
-        --live_order_count;
+        --index_live_count;
     }
 
     inline bool addToBook(const Order& o) {
@@ -368,6 +375,7 @@ private:
             level.totalQuantity += o.qty;
 
             ref = OrderRef{o.side, o.price, n};
+            ++index_live_count;
             ++live_order_count;
             if (bestBidIdx < idx) bestBidIdx = idx;
         } else {
@@ -376,6 +384,7 @@ private:
             level.totalQuantity += o.qty;
 
             ref = OrderRef{o.side, o.price, n};
+            ++index_live_count;
             ++live_order_count;
             if (bestAskIdx > idx) bestAskIdx = idx;
         }
