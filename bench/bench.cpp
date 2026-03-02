@@ -1,84 +1,193 @@
 #include "engine_pool.hpp"
 
+#include <chrono>
+#include <cstdint>
 #include <iostream>
 #include <random>
-#include <chrono>
+#include <string>
 #include <vector>
 
-OrderBookPool book(200000);
-TradeSink sink;
+static constexpr Price MID = 1000;
+static constexpr int   SPREAD = 50;  // prices in [MID-SPREAD, MID+SPREAD]
 
-// Generate a random price around 100.00 with +/- 50 ticks (0.01).
-static double randPrice(std::mt19937& rng){
-    std::uniform_int_distribution<int> ticks(-50, 50);
-    return 1000 +ticks(rng); // 1000 is mid-price in ticks
+// Deterministic tick generator within band.
+static inline Price randPrice(std::mt19937& rng) {
+    std::uniform_int_distribution<int> d(-SPREAD, SPREAD);
+    return MID + d(rng);
 }
 
-int main(){
-    constexpr int N = 5'000'000; // number of orders to simulate
-    std::unordered_map<OrderId, OrderRef> index; // id -> (side, price, iterator)
-    index.reserve(N); // reserve for performance / stability in benchmarks
+struct BenchConfig {
+    std::string mode = "maintenance"; // "maintenance" or "match"
+    int64_t ops = 5'000'000;
+    uint32_t seed = 12345;
 
-    TradeSink sink; // collect trade stats
+    // Operation mix (percentages must sum to 100)
+    int addPct = 60;
+    int cancelPct = 25;
+    int replacePct = 15;
 
-    std::mt19937 rng(12345); // deterministic seed for reproducibility
-    std::uniform_int_distribution<int> opDist(1, 10); // 1-7 for new order, 8-9 for cancel, 10 for replace
-    std::uniform_int_distribution<int> sideDist(0, 1); // 0 for buy, 1 for sell
-    std::uniform_int_distribution<int> qtyDist(1, 10); // order quantity between 1 and 10
+    // For match-heavy mode: widen crossing chance
+    int crossBiasPct = 80; // % of new orders that are priced to cross the spread
+};
 
-    int nextId = 1; // incremental order IDs
-    std::vector<int> liveIDs;// track live order IDs for cancel/replace
-    liveIDs.reserve(N);// track live order IDs for cancel/replace
+struct LiveSet {
+    // We maintain a dense array of live IDs + id->pos for O(1) remove.
+    std::vector<OrderId> ids;
+    std::vector<int> pos; // pos[id] = index in ids, or -1 if not live
 
+    explicit LiveSet(int maxId) : pos(maxId + 1, -1) {}
 
-    auto t0 = std::chrono::steady_clock::now(); // start timer
-    
-    for (int i =0; i< N; i++){
+    inline bool contains(OrderId id) const {
+        return id >= 0 && id < (OrderId)pos.size() && pos[id] != -1;
+    }
+
+    inline void add(OrderId id) {
+        if ((size_t)id >= pos.size()) return; // safety
+        if (pos[id] != -1) return;
+        pos[id] = (int)ids.size();
+        ids.push_back(id);
+    }
+
+    inline void remove(OrderId id) {
+        if ((size_t)id >= pos.size()) return;
+        int p = pos[id];
+        if (p == -1) return;
+        int last = (int)ids.size() - 1;
+        if (p != last) {
+            OrderId swapId = ids[last];
+            ids[p] = swapId;
+            pos[swapId] = p;
+        }
+        ids.pop_back();
+        pos[id] = -1;
+    }
+
+    inline bool empty() const { return ids.empty(); }
+
+    inline OrderId pick(std::mt19937& rng) const {
+        std::uniform_int_distribution<size_t> pickDist(0, ids.size() - 1);
+        return ids[pickDist(rng)];
+    }
+};
+
+static BenchConfig parseArgs(int argc, char** argv) {
+    BenchConfig cfg;
+    for (int i = 1; i < argc; ++i) {
+        std::string a = argv[i];
+        auto next = [&](const char* name) -> std::string {
+            if (i + 1 >= argc) return "";
+            return argv[++i];
+        };
+
+        if (a == "--mode") cfg.mode = next("--mode");
+        else if (a == "--ops") cfg.ops = std::stoll(next("--ops"));
+        else if (a == "--seed") cfg.seed = (uint32_t)std::stoul(next("--seed"));
+        else if (a == "--cross") cfg.crossBiasPct = std::stoi(next("--cross"));
+        else if (a == "--add") cfg.addPct = std::stoi(next("--add"));
+        else if (a == "--cancel") cfg.cancelPct = std::stoi(next("--cancel"));
+        else if (a == "--replace") cfg.replacePct = std::stoi(next("--replace"));
+    }
+    return cfg;
+}
+
+int main(int argc, char** argv) {
+    BenchConfig cfg = parseArgs(argc, argv);
+
+    // Sanity on mix
+    if (cfg.addPct + cfg.cancelPct + cfg.replacePct != 100) {
+        std::cerr << "ERROR: add+cancel+replace must sum to 100\n";
+        return 1;
+    }
+
+    // Pre-size IDs to avoid reallocations & make determinism tight.
+    int maxId = (int)cfg.ops + 10;
+
+    OrderBookPool book(/*expected_orders=*/ 300000); // reserve for speed
+    TradeSink sink;
+
+    std::mt19937 rng(cfg.seed);
+    std::uniform_int_distribution<int> opDist(1, 100);
+    std::uniform_int_distribution<int> qtyDist(1, 10);
+    std::uniform_int_distribution<int> sideDist(0, 1);
+    std::uniform_int_distribution<int> pctDist(1, 100);
+
+    LiveSet live(maxId);
+
+    OrderId nextId = 1;
+
+    auto t0 = std::chrono::steady_clock::now();
+
+    for (int64_t i = 0; i < cfg.ops; ++i) {
         int r = opDist(rng);
-        if (r < 60){
-            Side side = sideDist(rng) == 0 ? Side::buy : Side::sell; // random side
-            Price price = randPrice(rng); // random price around 100.00
-            int qty = qtyDist(rng); // random quantity
-            int id = nextId++; // assign unique ID
 
-            book.matchIncoming(Order{id, side, price, qty}, sink);
+        if (r <= cfg.addPct) {
+            Side side = (sideDist(rng) == 0) ? Side::buy : Side::sell;
 
-            if (index.find(id) != index.end()) liveIDs.push_back(id); // track live order ID   
-            
-        } else if (r < 85){
-            // Cancel a random live order
-            if (!liveIDs.empty()){
-                std::uniform_int_distribution<size_t> pick(0, liveIDs.size() - 1); // pick random index
-                size_t pos = pick(rng); // get random position
-                int id = liveIDs[pos]; // get order ID to cancel
+            Price p = randPrice(rng);
 
-                //swap pop on success or stale
-                (void)book.cancel(id); // cancel order, ignore result (could be already filled/cancelled)
-                liveIDs[pos] = liveIDs.back(); // swap with last
-                liveIDs.pop_back(); // remove last
+            if (cfg.mode == "match") {
+                // Bias the price so we more often cross:
+                // buys skew high, sells skew low.
+                // crossBiasPct controls how often we do this.
+                if (pctDist(rng) <= cfg.crossBiasPct) {
+                    if (side == Side::buy) p = MID + SPREAD;   // aggressive buy
+                    else p = MID - SPREAD;                    // aggressive sell
+                }
             }
-        }else {
-            if (!liveIDs.empty()){
-                std::uniform_int_distribution<size_t> pick(0, liveIDs.size() - 1); // pick random index
 
-                int id = liveIDs[pick(rng)]; // get order ID to replace
+            int qty = qtyDist(rng);
+            OrderId id = nextId++;
 
-                double newPrice = randPrice(rng); // new random price
-                int newQty = qtyDist(rng); // new random quantity
+            book.matchIncoming(Order{id, side, p, qty}, sink);
 
-                book.replace(id, newPrice, newQty, sink); // replace order, ignore result (could be already filled/cancelled   )
+            // If the order remained resting, it is live.
+            // We approximate this by trying cancel? No. That would change state.
+            // Instead: keep a small “live window” policy:
+            // In this workload, most adds will rest; for strictness, we track IDs optimistically
+            // then remove on failed cancel/replace via contains+book ops result.
+            live.add(id);
+
+        } else if (r <= cfg.addPct + cfg.cancelPct) {
+            if (!live.empty()) {
+                OrderId id = live.pick(rng);
+                if (book.cancel(id)) {
+                    live.remove(id);
+                } else {
+                    // stale/filled: remove to keep set accurate
+                    live.remove(id);
+                }
+            }
+
+        } else {
+            if (!live.empty()) {
+                OrderId id = live.pick(rng);
+                Price newP = randPrice(rng);
+                if (cfg.mode == "match") {
+                    // keep replacements somewhat aggressive too
+                    if (pctDist(rng) <= cfg.crossBiasPct) {
+                        // we don't know side here without querying engine; keep neutral-ish:
+                        newP = MID; // tends to interact
+                    }
+                }
+                int newQ = qtyDist(rng);
+
+                if (!book.replace(id, newP, newQ, sink)) {
+                    // stale/filled: remove from live set
+                    live.remove(id);
+                }
+            }
         }
     }
 
-    auto t1 = std::chrono::steady_clock::now(); // end timer
+    auto t1 = std::chrono::steady_clock::now();
     std::chrono::duration<double> dt = t1 - t0;
 
-    std::cout << "Ops: " << N << "\n";
+    std::cout << "Mode: " << cfg.mode << "\n";
+    std::cout << "Ops: " << cfg.ops << "\n";
     std::cout << "Seconds: " << dt.count() << "\n";
-    std::cout << "Ops/sec: " << (N / dt.count()) << "\n";
+    std::cout << "Ops/sec: " << (cfg.ops / dt.count()) << "\n";
     std::cout << "Trades: " << sink.tradeCount << "\n";
     std::cout << "Total filled qty: " << sink.totalQty << "\n";
-    std::cout << "Live orders: " << book.liveOrders() << "\n";
-}
-
+    std::cout << "Live orders (engine): " << book.liveOrders() << "\n";
+    std::cout << "Live orders (bench-set): " << live.ids.size() << "\n";
 }
