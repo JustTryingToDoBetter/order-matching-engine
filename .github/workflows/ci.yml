@@ -1,0 +1,21 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build bench and exchange
+        run: make bench exchange
+
+      - name: Run deterministic tests
+        run: make test
+
+      - name: Benchmark smoke test
+        run: ./bench_run --mode maintenance --ops 100000 --seed 12345
