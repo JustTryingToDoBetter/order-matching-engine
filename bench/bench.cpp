@@ -85,55 +85,35 @@ struct LiveSet {
     }
 };
 
+static inline bool isRestingResult(AddResult r) {
+    return r == AddResult::FullyRested || r == AddResult::PartiallyRested;
+}
 
-#ifndef NDEBUG
-static inline void reconcileLiveSet(const OrderBookPool& book, LiveSet& live) {
-    for (std::size_t idx = live.ids.size(); idx > 0; --idx) {
-        const OrderId id = live.ids[idx - 1];
-        if (!book.isLive(id)) {
+static inline void pruneClosedOrders(LiveSet& live, TradeSink& sink) {
+    for (OrderId id : sink.closedOrderIds) {
+        if (live.contains(id)) {
             live.remove(id);
         }
     }
+    sink.clearClosedOrderIds();
 }
-
-static inline void assertBenchInvariant(const OrderBookPool& book,
-                                        const LiveSet& live,
-                                        int64_t opIndex,
-                                        const char* opType,
-                                        OrderId orderId) {
-    const auto engineLive = book.liveOrders();
-    const auto indexLive = book.indexLiveCount();
-    const auto benchLive = live.ids.size();
-
-    if (engineLive != indexLive || engineLive != benchLive) {
-        std::cerr << "Invariant failure at op=" << opIndex
-                  << " type=" << opType
-                  << " order_id=" << orderId
-                  << " | engineLive=" << engineLive
-                  << " indexLive=" << indexLive
-                  << " benchLive=" << benchLive
-                  << "\n";
-        assert(false && "benchmark invariant failure");
-    }
-}
-#endif
 
 static BenchConfig parseArgs(int argc, char** argv) {
     BenchConfig cfg;
     for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
-        auto next = [&](const char* name) -> std::string {
+        auto next = [&]() -> std::string {
             if (i + 1 >= argc) return "";
             return argv[++i];
         };
 
-        if (a == "--mode") cfg.mode = next("--mode");
-        else if (a == "--ops") cfg.ops = std::stoll(next("--ops"));
-        else if (a == "--seed") cfg.seed = (uint32_t)std::stoul(next("--seed"));
-        else if (a == "--cross") cfg.crossBiasPct = std::stoi(next("--cross"));
-        else if (a == "--add") cfg.addPct = std::stoi(next("--add"));
-        else if (a == "--cancel") cfg.cancelPct = std::stoi(next("--cancel"));
-        else if (a == "--replace") cfg.replacePct = std::stoi(next("--replace"));
+        if (a == "--mode") cfg.mode = next();
+        else if (a == "--ops") cfg.ops = std::stoll(next());
+        else if (a == "--seed") cfg.seed = (uint32_t)std::stoul(next());
+        else if (a == "--cross") cfg.crossBiasPct = std::stoi(next());
+        else if (a == "--add") cfg.addPct = std::stoi(next());
+        else if (a == "--cancel") cfg.cancelPct = std::stoi(next());
+        else if (a == "--replace") cfg.replacePct = std::stoi(next());
     }
     return cfg;
 }
@@ -185,8 +165,8 @@ int main(int argc, char** argv) {
             OrderId id = nextId++;
             opOrderId = id;
 
-            book.matchIncoming(Order{id, side, p, qty}, sink);
-            if (book.isLive(id)) {
+            AddResult addResult = book.matchIncoming(Order{id, side, p, qty}, sink);
+            if (isRestingResult(addResult)) {
                 live.add(id);
             }
 
@@ -198,6 +178,7 @@ int main(int argc, char** argv) {
                 if (book.cancel(id)) {
                     live.remove(id);
                 } else {
+                    // stale safety: sampled as live but engine no longer has it.
                     live.remove(id);
                 }
             }
@@ -217,20 +198,14 @@ int main(int argc, char** argv) {
                 }
                 int newQ = (int)randBounded(rng, 10) + 1;
 
-                if (!book.replace(id, newP, newQ, sink)) {
-                    live.remove(id);
-                } else if (!book.isLive(id)) {
+                ReplaceResult replaceResult = book.replace(id, newP, newQ, sink);
+                if (!replaceResult.success || !replaceResult.rested()) {
                     live.remove(id);
                 }
             }
         }
 
-#ifndef NDEBUG
-        if (opType != nullptr) {
-            reconcileLiveSet(book, live);
-            assertBenchInvariant(book, live, i, opType, opOrderId);
-        }
-#endif
+        pruneClosedOrders(live, sink);
     }
 
 #ifndef NDEBUG

@@ -8,7 +8,7 @@ PERF_MODE ?= maintenance
 PERF_OPS ?= 5000000
 PERF_SEED ?= 12345
 
-.PHONY: all bench exchange perf-build perf perf-quick perf-check run_maint run_match clean
+.PHONY: all bench exchange perf-build perf perf-quick perf-check run_maint run_match test test-deterministic clean
 
 all: bench exchange
 
@@ -39,5 +39,11 @@ run_maint: bench
 run_match: bench
 	./bench_run --mode match --ops 5000000 --seed 12345 --cross 90
 
+test: test-deterministic
+
+test-deterministic: tests/engine_deterministic_tests.cpp src/engine_pool.hpp
+	$(CXX) $(CXXFLAGS) $(INCLUDES) tests/engine_deterministic_tests.cpp -o engine_deterministic_tests
+	./engine_deterministic_tests
+
 clean:
-	rm -f bench_run exchange perf.data perf.data.old perf_report.txt perf.script
+	rm -f bench_run exchange engine_deterministic_tests perf.data perf.data.old perf_report.txt perf.script
