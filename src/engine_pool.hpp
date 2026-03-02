@@ -16,11 +16,20 @@ using Price   = int;   // integer ticks
 struct TradeSink {
     long long tradeCount = 0;
     long long totalQty   = 0;
+    std::vector<OrderId> closedOrderIds;
 
     inline void onTrade(int qty, Price price, OrderId taker, OrderId maker) {
         (void)price; (void)taker; (void)maker;
         tradeCount++;
         totalQty += qty;
+    }
+
+    inline void onOrderClosed(OrderId id) {
+        closedOrderIds.push_back(id);
+    }
+
+    inline void clearClosedOrderIds() {
+        closedOrderIds.clear();
     }
 };
 
@@ -31,6 +40,22 @@ struct Order {
     Side side;
     Price price;
     int qty;
+};
+
+enum class AddResult {
+    Rejected,
+    FullyFilled,
+    PartiallyRested,
+    FullyRested,
+};
+
+struct ReplaceResult {
+    bool success = false;
+    AddResult addResult = AddResult::Rejected;
+
+    inline bool rested() const {
+        return addResult == AddResult::PartiallyRested || addResult == AddResult::FullyRested;
+    }
 };
 
 // ---------------- Intrusive node ----------------
@@ -173,10 +198,12 @@ public:
         pool.reserve(expected_orders);
     }
 
-    inline void matchIncoming(const Order& incoming, TradeSink& sink) {
+    inline AddResult matchIncoming(const Order& incoming, TradeSink& sink) {
         Order in = incoming;
-        if (in.qty <= 0) return;
-        if (in.price < MIN_TICK || in.price > MAX_TICK) return;
+        if (in.qty <= 0) return AddResult::Rejected;
+        if (in.price < MIN_TICK || in.price > MAX_TICK) return AddResult::Rejected;
+
+        const int initialQty = in.qty;
 
         if (in.side == Side::buy) {
             // Match against best asks while crossed
@@ -198,6 +225,7 @@ public:
                     sink.onTrade(fill, fromIndex(bestAskIdx), in.id, maker.id);
 
                     if (maker.qty == 0) {
+                        sink.onOrderClosed(maker.id);
                         clearIndexSlot(maker.id);
                         level.pop_front();
                         pool.free(makerNode);
@@ -214,9 +242,7 @@ public:
                 }
             }
 
-            if (in.qty > 0) {
-                (void)addToBook(in);
-            }
+            if (in.qty > 0) return restingResult(addToBook(in), in.qty, initialQty);
         } else {
             while (in.qty > 0 && bestBidIdx >= 0) {
                 if (bestBidIdx < toIndex(in.price)) break;
@@ -236,6 +262,7 @@ public:
                     sink.onTrade(fill, fromIndex(bestBidIdx), in.id, maker.id);
 
                     if (maker.qty == 0) {
+                        sink.onOrderClosed(maker.id);
                         clearIndexSlot(maker.id);
                         level.pop_front();
                         pool.free(makerNode);
@@ -251,10 +278,10 @@ public:
                 }
             }
 
-            if (in.qty > 0) {
-                (void)addToBook(in);
-            }
+            if (in.qty > 0) return restingResult(addToBook(in), in.qty, initialQty);
         }
+
+        return AddResult::FullyFilled;
     }
 
     inline bool cancel(OrderId id) {
@@ -284,16 +311,15 @@ public:
         return true;
     }
 
-    inline bool replace(OrderId id, Price newPrice, int newQty, TradeSink& sink) {
-        if (!isValidId(id)) return false;
+    inline ReplaceResult replace(OrderId id, Price newPrice, int newQty, TradeSink& sink) {
+        if (!isValidId(id)) return {};
         OrderRef& ref = index[static_cast<std::size_t>(id)];
-        if (!ref.isValid()) return false;
+        if (!ref.isValid()) return {};
 
         Side side = ref.side;
-        if (!cancel(id)) return false;
+        if (!cancel(id)) return {};
 
-        matchIncoming(Order{id, side, newPrice, newQty}, sink);
-        return true;
+        return ReplaceResult{true, matchIncoming(Order{id, side, newPrice, newQty}, sink)};
     }
 
     inline std::size_t liveOrders() const { return live_order_count; }
@@ -354,6 +380,12 @@ private:
             if (bestAskIdx > idx) bestAskIdx = idx;
         }
         return true;
+    }
+
+    inline AddResult restingResult(bool addSucceeded, int remainingQty, int initialQty) const {
+        if (!addSucceeded) return AddResult::Rejected;
+        if (remainingQty < initialQty) return AddResult::PartiallyRested;
+        return AddResult::FullyRested;
     }
 
     inline void updateBestBid() {
