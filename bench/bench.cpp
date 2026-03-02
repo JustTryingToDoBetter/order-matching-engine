@@ -70,22 +70,35 @@ struct LiveSet {
     }
 };
 
+static inline bool isRestingResult(AddResult r) {
+    return r == AddResult::FullyRested || r == AddResult::PartiallyRested;
+}
+
+static inline void pruneClosedOrders(LiveSet& live, TradeSink& sink) {
+    for (OrderId id : sink.closedOrderIds) {
+        if (live.contains(id)) {
+            live.remove(id);
+        }
+    }
+    sink.clearClosedOrderIds();
+}
+
 static BenchConfig parseArgs(int argc, char** argv) {
     BenchConfig cfg;
     for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
-        auto next = [&](const char* name) -> std::string {
+        auto next = [&]() -> std::string {
             if (i + 1 >= argc) return "";
             return argv[++i];
         };
 
-        if (a == "--mode") cfg.mode = next("--mode");
-        else if (a == "--ops") cfg.ops = std::stoll(next("--ops"));
-        else if (a == "--seed") cfg.seed = (uint32_t)std::stoul(next("--seed"));
-        else if (a == "--cross") cfg.crossBiasPct = std::stoi(next("--cross"));
-        else if (a == "--add") cfg.addPct = std::stoi(next("--add"));
-        else if (a == "--cancel") cfg.cancelPct = std::stoi(next("--cancel"));
-        else if (a == "--replace") cfg.replacePct = std::stoi(next("--replace"));
+        if (a == "--mode") cfg.mode = next();
+        else if (a == "--ops") cfg.ops = std::stoll(next());
+        else if (a == "--seed") cfg.seed = (uint32_t)std::stoul(next());
+        else if (a == "--cross") cfg.crossBiasPct = std::stoi(next());
+        else if (a == "--add") cfg.addPct = std::stoi(next());
+        else if (a == "--cancel") cfg.cancelPct = std::stoi(next());
+        else if (a == "--replace") cfg.replacePct = std::stoi(next());
     }
     return cfg;
 }
@@ -138,14 +151,10 @@ int main(int argc, char** argv) {
             int qty = qtyDist(rng);
             OrderId id = nextId++;
 
-            book.matchIncoming(Order{id, side, p, qty}, sink);
-
-            // If the order remained resting, it is live.
-            // We approximate this by trying cancel? No. That would change state.
-            // Instead: keep a small “live window” policy:
-            // In this workload, most adds will rest; for strictness, we track IDs optimistically
-            // then remove on failed cancel/replace via contains+book ops result.
-            live.add(id);
+            AddResult addResult = book.matchIncoming(Order{id, side, p, qty}, sink);
+            if (isRestingResult(addResult)) {
+                live.add(id);
+            }
 
         } else if (r <= cfg.addPct + cfg.cancelPct) {
             if (!live.empty()) {
@@ -153,7 +162,7 @@ int main(int argc, char** argv) {
                 if (book.cancel(id)) {
                     live.remove(id);
                 } else {
-                    // stale/filled: remove to keep set accurate
+                    // stale safety: sampled as live but engine no longer has it.
                     live.remove(id);
                 }
             }
@@ -171,12 +180,14 @@ int main(int argc, char** argv) {
                 }
                 int newQ = qtyDist(rng);
 
-                if (!book.replace(id, newP, newQ, sink)) {
-                    // stale/filled: remove from live set
+                ReplaceResult replaceResult = book.replace(id, newP, newQ, sink);
+                if (!replaceResult.success || !replaceResult.rested()) {
                     live.remove(id);
                 }
             }
         }
+
+        pruneClosedOrders(live, sink);
     }
 
     auto t1 = std::chrono::steady_clock::now();
@@ -190,4 +201,11 @@ int main(int argc, char** argv) {
     std::cout << "Total filled qty: " << sink.totalQty << "\n";
     std::cout << "Live orders (engine): " << book.liveOrders() << "\n";
     std::cout << "Live orders (bench-set): " << live.ids.size() << "\n";
+
+    if (book.liveOrders() != live.ids.size()) {
+        std::cerr << "ERROR: live-order count mismatch\n";
+        return 2;
+    }
+
+    return 0;
 }
