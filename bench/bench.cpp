@@ -102,7 +102,7 @@ int main(int argc, char** argv) {
     // Pre-size IDs to avoid reallocations & make determinism tight.
     int maxId = (int)cfg.ops + 10;
 
-    OrderBookPool book(/*expected_orders=*/ 300000); // reserve for speed
+    OrderBookPool book(/*expected_orders=*/ 300000, /*max_order_id=*/ maxId); // reserve for speed
     TradeSink sink;
 
     std::mt19937 rng(cfg.seed);

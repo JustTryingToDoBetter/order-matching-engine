@@ -4,7 +4,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
-#include <unordered_map>
 #include <vector>
 
 enum class Side { buy, sell };
@@ -151,24 +150,27 @@ constexpr Price MAX_TICK = 1100;
 constexpr int   NUM_LEVELS = MAX_TICK - MIN_TICK + 1;
 
 struct OrderRef {
-    Side side;
-    Price price;
-    OrderNode* node;
+    Side side = Side::buy;
+    Price price = 0;
+    OrderNode* node = nullptr;
+
+    inline bool isValid() const { return node != nullptr; }
+    inline void clear() { node = nullptr; }
 };
 
 class OrderBookPool {
 public:
-    explicit OrderBookPool(std::size_t expected_orders = 0)
+    explicit OrderBookPool(std::size_t expected_orders = 0, OrderId max_order_id = 0)
         : pool(expected_orders) {
         bidLevels.resize(NUM_LEVELS);
         askLevels.resize(NUM_LEVELS);
-        index.reserve(expected_orders ? expected_orders : 1024);
-        index.max_load_factor(0.7f);
+        if (max_order_id >= 0) {
+            index.resize(static_cast<std::size_t>(max_order_id) + 1);
+        }
     }
 
     inline void reserve(std::size_t expected_orders) {
         pool.reserve(expected_orders);
-        index.reserve(expected_orders);
     }
 
     inline void matchIncoming(const Order& incoming, TradeSink& sink) {
@@ -196,8 +198,7 @@ public:
                     sink.onTrade(fill, fromIndex(bestAskIdx), in.id, maker.id);
 
                     if (maker.qty == 0) {
-                        // Remove maker from index and level
-                        index.erase(maker.id);
+                        clearIndexSlot(maker.id);
                         level.pop_front();
                         pool.free(makerNode);
                     } else {
@@ -235,7 +236,7 @@ public:
                     sink.onTrade(fill, fromIndex(bestBidIdx), in.id, maker.id);
 
                     if (maker.qty == 0) {
-                        index.erase(maker.id);
+                        clearIndexSlot(maker.id);
                         level.pop_front();
                         pool.free(makerNode);
                     } else {
@@ -257,12 +258,13 @@ public:
     }
 
     inline bool cancel(OrderId id) {
-        auto it = index.find(id);
-        if (it == index.end()) return false;
+        if (!isValidId(id)) return false;
+        OrderRef& ref = index[static_cast<std::size_t>(id)];
+        if (!ref.isValid()) return false;
 
-        OrderNode* n = it->second.node;
-        const Side side = it->second.side;
-        const Price price = it->second.price;
+        OrderNode* n = ref.node;
+        const Side side = ref.side;
+        const Price price = ref.price;
 
         int idx = toIndex(price);
         PriceLevel& level = (side == Side::buy) ? bidLevels[idx] : askLevels[idx];
@@ -270,7 +272,8 @@ public:
         level.totalQuantity -= n->o.qty;
         level.erase(n);
 
-        index.erase(it);
+        ref.clear();
+        --live_order_count;
         pool.free(n);
 
         if (level.empty()) {
@@ -282,24 +285,26 @@ public:
     }
 
     inline bool replace(OrderId id, Price newPrice, int newQty, TradeSink& sink) {
-        auto it = index.find(id);
-        if (it == index.end()) return false;
+        if (!isValidId(id)) return false;
+        OrderRef& ref = index[static_cast<std::size_t>(id)];
+        if (!ref.isValid()) return false;
 
-        Side side = it->second.side;
+        Side side = ref.side;
         if (!cancel(id)) return false;
 
         matchIncoming(Order{id, side, newPrice, newQty}, sink);
         return true;
     }
 
-    inline std::size_t liveOrders() const { return index.size(); }
+    inline std::size_t liveOrders() const { return live_order_count; }
 
 private:
     std::vector<PriceLevel> bidLevels;
     std::vector<PriceLevel> askLevels;
 
-    std::unordered_map<OrderId, OrderRef> index;
+    std::vector<OrderRef> index;
     NodePool pool;
+    std::size_t live_order_count = 0;
 
     int bestBidIdx = -1;
     int bestAskIdx = NUM_LEVELS;
@@ -307,10 +312,26 @@ private:
     static inline int toIndex(Price p) { return p - MIN_TICK; }
     static inline Price fromIndex(int idx) { return idx + MIN_TICK; }
 
+    inline bool isValidId(OrderId id) const {
+        return id >= 0 && static_cast<std::size_t>(id) < index.size();
+    }
+
+    inline void clearIndexSlot(OrderId id) {
+        if (!isValidId(id)) return;
+        OrderRef& ref = index[static_cast<std::size_t>(id)];
+        if (!ref.isValid()) return;
+
+        ref.clear();
+        --live_order_count;
+    }
+
     inline bool addToBook(const Order& o) {
         if (o.qty <= 0) return false;
         if (o.price < MIN_TICK || o.price > MAX_TICK) return false;
-        if (index.find(o.id) != index.end()) return false;
+        if (!isValidId(o.id)) return false;
+
+        OrderRef& ref = index[static_cast<std::size_t>(o.id)];
+        if (ref.isValid()) return false;
 
         OrderNode* n = pool.alloc(o);
         int idx = toIndex(o.price);
@@ -320,14 +341,16 @@ private:
             level.push_back(n);
             level.totalQuantity += o.qty;
 
-            index.emplace(o.id, OrderRef{o.side, o.price, n});
+            ref = OrderRef{o.side, o.price, n};
+            ++live_order_count;
             if (bestBidIdx < idx) bestBidIdx = idx;
         } else {
             PriceLevel& level = askLevels[idx];
             level.push_back(n);
             level.totalQuantity += o.qty;
 
-            index.emplace(o.id, OrderRef{o.side, o.price, n});
+            ref = OrderRef{o.side, o.price, n};
+            ++live_order_count;
             if (bestAskIdx > idx) bestAskIdx = idx;
         }
         return true;
