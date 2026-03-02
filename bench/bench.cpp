@@ -1,5 +1,6 @@
 #include "engine_pool.hpp"
 
+#include <cassert>
 #include <chrono>
 #include <cstdint>
 #include <iostream>
@@ -70,6 +71,39 @@ struct LiveSet {
     }
 };
 
+
+#ifndef NDEBUG
+static inline void reconcileLiveSet(const OrderBookPool& book, LiveSet& live) {
+    for (std::size_t idx = live.ids.size(); idx > 0; --idx) {
+        const OrderId id = live.ids[idx - 1];
+        if (!book.isLive(id)) {
+            live.remove(id);
+        }
+    }
+}
+
+static inline void assertBenchInvariant(const OrderBookPool& book,
+                                        const LiveSet& live,
+                                        int64_t opIndex,
+                                        const char* opType,
+                                        OrderId orderId) {
+    const auto engineLive = book.liveOrders();
+    const auto indexLive = book.indexLiveCount();
+    const auto benchLive = live.ids.size();
+
+    if (engineLive != indexLive || engineLive != benchLive) {
+        std::cerr << "Invariant failure at op=" << opIndex
+                  << " type=" << opType
+                  << " order_id=" << orderId
+                  << " | engineLive=" << engineLive
+                  << " indexLive=" << indexLive
+                  << " benchLive=" << benchLive
+                  << "\n";
+        assert(false && "benchmark invariant failure");
+    }
+}
+#endif
+
 static BenchConfig parseArgs(int argc, char** argv) {
     BenchConfig cfg;
     for (int i = 1; i < argc; ++i) {
@@ -119,8 +153,11 @@ int main(int argc, char** argv) {
 
     for (int64_t i = 0; i < cfg.ops; ++i) {
         int r = opDist(rng);
+        OrderId opOrderId = -1;
+        const char* opType = nullptr;
 
         if (r <= cfg.addPct) {
+            opType = "add";
             Side side = (sideDist(rng) == 0) ? Side::buy : Side::sell;
 
             Price p = randPrice(rng);
@@ -137,30 +174,30 @@ int main(int argc, char** argv) {
 
             int qty = qtyDist(rng);
             OrderId id = nextId++;
+            opOrderId = id;
 
             book.matchIncoming(Order{id, side, p, qty}, sink);
-
-            // If the order remained resting, it is live.
-            // We approximate this by trying cancel? No. That would change state.
-            // Instead: keep a small “live window” policy:
-            // In this workload, most adds will rest; for strictness, we track IDs optimistically
-            // then remove on failed cancel/replace via contains+book ops result.
-            live.add(id);
+            if (book.isLive(id)) {
+                live.add(id);
+            }
 
         } else if (r <= cfg.addPct + cfg.cancelPct) {
+            opType = "cancel";
             if (!live.empty()) {
                 OrderId id = live.pick(rng);
+                opOrderId = id;
                 if (book.cancel(id)) {
                     live.remove(id);
                 } else {
-                    // stale/filled: remove to keep set accurate
                     live.remove(id);
                 }
             }
 
         } else {
+            opType = "replace";
             if (!live.empty()) {
                 OrderId id = live.pick(rng);
+                opOrderId = id;
                 Price newP = randPrice(rng);
                 if (cfg.mode == "match") {
                     // keep replacements somewhat aggressive too
@@ -172,12 +209,25 @@ int main(int argc, char** argv) {
                 int newQ = qtyDist(rng);
 
                 if (!book.replace(id, newP, newQ, sink)) {
-                    // stale/filled: remove from live set
+                    live.remove(id);
+                } else if (!book.isLive(id)) {
                     live.remove(id);
                 }
             }
         }
+
+#ifndef NDEBUG
+        if (opType != nullptr) {
+            reconcileLiveSet(book, live);
+            assertBenchInvariant(book, live, i, opType, opOrderId);
+        }
+#endif
     }
+
+#ifndef NDEBUG
+    reconcileLiveSet(book, live);
+    assertBenchInvariant(book, live, cfg.ops, "final", -1);
+#endif
 
     auto t1 = std::chrono::steady_clock::now();
     std::chrono::duration<double> dt = t1 - t0;
