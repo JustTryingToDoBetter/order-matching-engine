@@ -1,0 +1,403 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 3  of event 'cpu-clock'
+# Event count (approx.): 30303030
+#
+# Children      Self  Command   Shared Object     Symbol                                                                                                                                                                                                                                                                                                                                                                                                              
+# ........  ........  ........  ................  ....................................................................................................................................................................................................................................................................................................................................................................................................................
+#
+   100.00%     0.00%  exchange  exchange          [.] _start
+            |
+            ---_start
+               __libc_start_main_impl (inlined)
+               __libc_start_call_main
+               main
+               |          
+               |--33.33%--OrderBookPool::matchIncoming(Order const&, TradeSink&) (inlined)
+               |          OrderBookPool::addToBook(Order const&) (inlined)
+               |          std::unordered_map<int, OrderRef, std::hash<int>, std::equal_to<int>, std::allocator<std::pair<int const, OrderRef> > >::find(int const&) (inlined)
+               |          std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::find(int const&) (inlined)
+               |          
+               |--33.33%--OrderBookPool::OrderBookPool(unsigned long) (inlined)
+               |          std::unordered_map<int, OrderRef, std::hash<int>, std::equal_to<int>, std::allocator<std::pair<int const, OrderRef> > >::reserve(unsigned long) (inlined)
+               |          std::__detail::_Rehash_base<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true>, std::integral_constant<bool, true> >::reserve(unsigned long) (inlined)
+               |          std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::rehash(unsigned long) (inlined)
+               |          std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_rehash(unsigned long, unsigned long const&)
+               |          std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_rehash_aux(unsigned long, std::integral_constant<bool, true>) (inlined)
+               |          std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_allocate_buckets(unsigned long) (inlined)
+               |          std::__detail::_Hashtable_alloc<std::allocator<std::__detail::_Hash_node<std::pair<int const, OrderRef>, false> > >::_M_allocate_buckets(unsigned long) (inlined)
+               |          __memset_avx2_unaligned_erms
+               |          0xffffffff8b600bc7
+               |          0xffffffff8b4dc024
+               |          0xffffffff8a4b5bdf
+               |          0xffffffff8a7d26c2
+               |          0xffffffff8a7d2147
+               |          0xffffffff8a7d1dff
+               |          0xffffffff8a7d0a9b
+               |          0xffffffff8a86b70c
+               |          
+                --33.33%--LiveSet::add(int) (inlined)
+
+   100.00%     0.00%  exchange  libc.so.6         [.] __libc_start_main_impl (inlined)
+            |
+            ---__libc_start_main_impl (inlined)
+               __libc_start_call_main
+               main
+               |          
+               |--33.33%--OrderBookPool::matchIncoming(Order const&, TradeSink&) (inlined)
+               |          OrderBookPool::addToBook(Order const&) (inlined)
+               |          std::unordered_map<int, OrderRef, std::hash<int>, std::equal_to<int>, std::allocator<std::pair<int const, OrderRef> > >::find(int const&) (inlined)
+               |          std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::find(int const&) (inlined)
+               |          
+               |--33.33%--OrderBookPool::OrderBookPool(unsigned long) (inlined)
+               |          std::unordered_map<int, OrderRef, std::hash<int>, std::equal_to<int>, std::allocator<std::pair<int const, OrderRef> > >::reserve(unsigned long) (inlined)
+               |          std::__detail::_Rehash_base<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true>, std::integral_constant<bool, true> >::reserve(unsigned long) (inlined)
+               |          std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::rehash(unsigned long) (inlined)
+               |          std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_rehash(unsigned long, unsigned long const&)
+               |          std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_rehash_aux(unsigned long, std::integral_constant<bool, true>) (inlined)
+               |          std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_allocate_buckets(unsigned long) (inlined)
+               |          std::__detail::_Hashtable_alloc<std::allocator<std::__detail::_Hash_node<std::pair<int const, OrderRef>, false> > >::_M_allocate_buckets(unsigned long) (inlined)
+               |          __memset_avx2_unaligned_erms
+               |          0xffffffff8b600bc7
+               |          0xffffffff8b4dc024
+               |          0xffffffff8a4b5bdf
+               |          0xffffffff8a7d26c2
+               |          0xffffffff8a7d2147
+               |          0xffffffff8a7d1dff
+               |          0xffffffff8a7d0a9b
+               |          0xffffffff8a86b70c
+               |          
+                --33.33%--LiveSet::add(int) (inlined)
+
+   100.00%     0.00%  exchange  libc.so.6         [.] __libc_start_call_main
+            |
+            ---__libc_start_call_main
+               main
+               |          
+               |--33.33%--OrderBookPool::matchIncoming(Order const&, TradeSink&) (inlined)
+               |          OrderBookPool::addToBook(Order const&) (inlined)
+               |          std::unordered_map<int, OrderRef, std::hash<int>, std::equal_to<int>, std::allocator<std::pair<int const, OrderRef> > >::find(int const&) (inlined)
+               |          std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::find(int const&) (inlined)
+               |          
+               |--33.33%--OrderBookPool::OrderBookPool(unsigned long) (inlined)
+               |          std::unordered_map<int, OrderRef, std::hash<int>, std::equal_to<int>, std::allocator<std::pair<int const, OrderRef> > >::reserve(unsigned long) (inlined)
+               |          std::__detail::_Rehash_base<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true>, std::integral_constant<bool, true> >::reserve(unsigned long) (inlined)
+               |          std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::rehash(unsigned long) (inlined)
+               |          std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_rehash(unsigned long, unsigned long const&)
+               |          std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_rehash_aux(unsigned long, std::integral_constant<bool, true>) (inlined)
+               |          std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_allocate_buckets(unsigned long) (inlined)
+               |          std::__detail::_Hashtable_alloc<std::allocator<std::__detail::_Hash_node<std::pair<int const, OrderRef>, false> > >::_M_allocate_buckets(unsigned long) (inlined)
+               |          __memset_avx2_unaligned_erms
+               |          0xffffffff8b600bc7
+               |          0xffffffff8b4dc024
+               |          0xffffffff8a4b5bdf
+               |          0xffffffff8a7d26c2
+               |          0xffffffff8a7d2147
+               |          0xffffffff8a7d1dff
+               |          0xffffffff8a7d0a9b
+               |          0xffffffff8a86b70c
+               |          
+                --33.33%--LiveSet::add(int) (inlined)
+
+   100.00%    33.33%  exchange  exchange          [.] main
+            |          
+            |--66.67%--main
+            |          |          
+            |          |--33.33%--OrderBookPool::matchIncoming(Order const&, TradeSink&) (inlined)
+            |          |          OrderBookPool::addToBook(Order const&) (inlined)
+            |          |          std::unordered_map<int, OrderRef, std::hash<int>, std::equal_to<int>, std::allocator<std::pair<int const, OrderRef> > >::find(int const&) (inlined)
+            |          |          std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::find(int const&) (inlined)
+            |          |          
+            |           --33.33%--OrderBookPool::OrderBookPool(unsigned long) (inlined)
+            |                     std::unordered_map<int, OrderRef, std::hash<int>, std::equal_to<int>, std::allocator<std::pair<int const, OrderRef> > >::reserve(unsigned long) (inlined)
+            |                     std::__detail::_Rehash_base<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true>, std::integral_constant<bool, true> >::reserve(unsigned long) (inlined)
+            |                     std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::rehash(unsigned long) (inlined)
+            |                     std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_rehash(unsigned long, unsigned long const&)
+            |                     std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_rehash_aux(unsigned long, std::integral_constant<bool, true>) (inlined)
+            |                     std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_allocate_buckets(unsigned long) (inlined)
+            |                     std::__detail::_Hashtable_alloc<std::allocator<std::__detail::_Hash_node<std::pair<int const, OrderRef>, false> > >::_M_allocate_buckets(unsigned long) (inlined)
+            |                     __memset_avx2_unaligned_erms
+            |                     0xffffffff8b600bc7
+            |                     0xffffffff8b4dc024
+            |                     0xffffffff8a4b5bdf
+            |                     0xffffffff8a7d26c2
+            |                     0xffffffff8a7d2147
+            |                     0xffffffff8a7d1dff
+            |                     0xffffffff8a7d0a9b
+            |                     0xffffffff8a86b70c
+            |          
+             --33.33%--_start
+                       __libc_start_main_impl (inlined)
+                       __libc_start_call_main
+                       main
+                       LiveSet::add(int) (inlined)
+
+    33.33%    33.33%  exchange  [unknown]         [k] 0xffffffff8a86b70c
+            |
+            ---_start
+               __libc_start_main_impl (inlined)
+               __libc_start_call_main
+               main
+               OrderBookPool::OrderBookPool(unsigned long) (inlined)
+               std::unordered_map<int, OrderRef, std::hash<int>, std::equal_to<int>, std::allocator<std::pair<int const, OrderRef> > >::reserve(unsigned long) (inlined)
+               std::__detail::_Rehash_base<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true>, std::integral_constant<bool, true> >::reserve(unsigned long) (inlined)
+               std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::rehash(unsigned long) (inlined)
+               std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_rehash(unsigned long, unsigned long const&)
+               std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_rehash_aux(unsigned long, std::integral_constant<bool, true>) (inlined)
+               std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_allocate_buckets(unsigned long) (inlined)
+               std::__detail::_Hashtable_alloc<std::allocator<std::__detail::_Hash_node<std::pair<int const, OrderRef>, false> > >::_M_allocate_buckets(unsigned long) (inlined)
+               __memset_avx2_unaligned_erms
+               0xffffffff8b600bc7
+               0xffffffff8b4dc024
+               0xffffffff8a4b5bdf
+               0xffffffff8a7d26c2
+               0xffffffff8a7d2147
+               0xffffffff8a7d1dff
+               0xffffffff8a7d0a9b
+               0xffffffff8a86b70c
+
+    33.33%     0.00%  exchange  exchange          [.] OrderBookPool::OrderBookPool(unsigned long) (inlined)
+            |
+            ---OrderBookPool::OrderBookPool(unsigned long) (inlined)
+               std::unordered_map<int, OrderRef, std::hash<int>, std::equal_to<int>, std::allocator<std::pair<int const, OrderRef> > >::reserve(unsigned long) (inlined)
+               std::__detail::_Rehash_base<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true>, std::integral_constant<bool, true> >::reserve(unsigned long) (inlined)
+               std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::rehash(unsigned long) (inlined)
+               std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_rehash(unsigned long, unsigned long const&)
+               std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_rehash_aux(unsigned long, std::integral_constant<bool, true>) (inlined)
+               std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_allocate_buckets(unsigned long) (inlined)
+               std::__detail::_Hashtable_alloc<std::allocator<std::__detail::_Hash_node<std::pair<int const, OrderRef>, false> > >::_M_allocate_buckets(unsigned long) (inlined)
+               __memset_avx2_unaligned_erms
+               0xffffffff8b600bc7
+               0xffffffff8b4dc024
+               0xffffffff8a4b5bdf
+               0xffffffff8a7d26c2
+               0xffffffff8a7d2147
+               0xffffffff8a7d1dff
+               0xffffffff8a7d0a9b
+               0xffffffff8a86b70c
+
+    33.33%     0.00%  exchange  exchange          [.] std::unordered_map<int, OrderRef, std::hash<int>, std::equal_to<int>, std::allocator<std::pair<int const, OrderRef> > >::reserve(unsigned long) (inlined)
+            |
+            ---std::unordered_map<int, OrderRef, std::hash<int>, std::equal_to<int>, std::allocator<std::pair<int const, OrderRef> > >::reserve(unsigned long) (inlined)
+               std::__detail::_Rehash_base<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true>, std::integral_constant<bool, true> >::reserve(unsigned long) (inlined)
+               std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::rehash(unsigned long) (inlined)
+               std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_rehash(unsigned long, unsigned long const&)
+               std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_rehash_aux(unsigned long, std::integral_constant<bool, true>) (inlined)
+               std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_allocate_buckets(unsigned long) (inlined)
+               std::__detail::_Hashtable_alloc<std::allocator<std::__detail::_Hash_node<std::pair<int const, OrderRef>, false> > >::_M_allocate_buckets(unsigned long) (inlined)
+               __memset_avx2_unaligned_erms
+               0xffffffff8b600bc7
+               0xffffffff8b4dc024
+               0xffffffff8a4b5bdf
+               0xffffffff8a7d26c2
+               0xffffffff8a7d2147
+               0xffffffff8a7d1dff
+               0xffffffff8a7d0a9b
+               0xffffffff8a86b70c
+
+    33.33%     0.00%  exchange  exchange          [.] std::__detail::_Rehash_base<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true>, std::integral_constant<bool, true> >::reserve(unsigned long) (inlined)
+            |
+            ---std::__detail::_Rehash_base<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true>, std::integral_constant<bool, true> >::reserve(unsigned long) (inlined)
+               std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::rehash(unsigned long) (inlined)
+               std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_rehash(unsigned long, unsigned long const&)
+               std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_rehash_aux(unsigned long, std::integral_constant<bool, true>) (inlined)
+               std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_allocate_buckets(unsigned long) (inlined)
+               std::__detail::_Hashtable_alloc<std::allocator<std::__detail::_Hash_node<std::pair<int const, OrderRef>, false> > >::_M_allocate_buckets(unsigned long) (inlined)
+               __memset_avx2_unaligned_erms
+               0xffffffff8b600bc7
+               0xffffffff8b4dc024
+               0xffffffff8a4b5bdf
+               0xffffffff8a7d26c2
+               0xffffffff8a7d2147
+               0xffffffff8a7d1dff
+               0xffffffff8a7d0a9b
+               0xffffffff8a86b70c
+
+    33.33%     0.00%  exchange  exchange          [.] std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::rehash(unsigned long) (inlined)
+            |
+            ---std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::rehash(unsigned long) (inlined)
+               std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_rehash(unsigned long, unsigned long const&)
+               std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_rehash_aux(unsigned long, std::integral_constant<bool, true>) (inlined)
+               std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_allocate_buckets(unsigned long) (inlined)
+               std::__detail::_Hashtable_alloc<std::allocator<std::__detail::_Hash_node<std::pair<int const, OrderRef>, false> > >::_M_allocate_buckets(unsigned long) (inlined)
+               __memset_avx2_unaligned_erms
+               0xffffffff8b600bc7
+               0xffffffff8b4dc024
+               0xffffffff8a4b5bdf
+               0xffffffff8a7d26c2
+               0xffffffff8a7d2147
+               0xffffffff8a7d1dff
+               0xffffffff8a7d0a9b
+               0xffffffff8a86b70c
+
+    33.33%     0.00%  exchange  exchange          [.] std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_rehash(unsigned long, unsigned long const&)
+            |
+            ---std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_rehash(unsigned long, unsigned long const&)
+               std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_rehash_aux(unsigned long, std::integral_constant<bool, true>) (inlined)
+               std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_allocate_buckets(unsigned long) (inlined)
+               std::__detail::_Hashtable_alloc<std::allocator<std::__detail::_Hash_node<std::pair<int const, OrderRef>, false> > >::_M_allocate_buckets(unsigned long) (inlined)
+               __memset_avx2_unaligned_erms
+               0xffffffff8b600bc7
+               0xffffffff8b4dc024
+               0xffffffff8a4b5bdf
+               0xffffffff8a7d26c2
+               0xffffffff8a7d2147
+               0xffffffff8a7d1dff
+               0xffffffff8a7d0a9b
+               0xffffffff8a86b70c
+
+    33.33%     0.00%  exchange  exchange          [.] std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_rehash_aux(unsigned long, std::integral_constant<bool, true>) (inlined)
+            |
+            ---std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_rehash_aux(unsigned long, std::integral_constant<bool, true>) (inlined)
+               std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_allocate_buckets(unsigned long) (inlined)
+               std::__detail::_Hashtable_alloc<std::allocator<std::__detail::_Hash_node<std::pair<int const, OrderRef>, false> > >::_M_allocate_buckets(unsigned long) (inlined)
+               __memset_avx2_unaligned_erms
+               0xffffffff8b600bc7
+               0xffffffff8b4dc024
+               0xffffffff8a4b5bdf
+               0xffffffff8a7d26c2
+               0xffffffff8a7d2147
+               0xffffffff8a7d1dff
+               0xffffffff8a7d0a9b
+               0xffffffff8a86b70c
+
+    33.33%     0.00%  exchange  exchange          [.] std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_allocate_buckets(unsigned long) (inlined)
+            |
+            ---std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_allocate_buckets(unsigned long) (inlined)
+               std::__detail::_Hashtable_alloc<std::allocator<std::__detail::_Hash_node<std::pair<int const, OrderRef>, false> > >::_M_allocate_buckets(unsigned long) (inlined)
+               __memset_avx2_unaligned_erms
+               0xffffffff8b600bc7
+               0xffffffff8b4dc024
+               0xffffffff8a4b5bdf
+               0xffffffff8a7d26c2
+               0xffffffff8a7d2147
+               0xffffffff8a7d1dff
+               0xffffffff8a7d0a9b
+               0xffffffff8a86b70c
+
+    33.33%     0.00%  exchange  exchange          [.] std::__detail::_Hashtable_alloc<std::allocator<std::__detail::_Hash_node<std::pair<int const, OrderRef>, false> > >::_M_allocate_buckets(unsigned long) (inlined)
+            |
+            ---std::__detail::_Hashtable_alloc<std::allocator<std::__detail::_Hash_node<std::pair<int const, OrderRef>, false> > >::_M_allocate_buckets(unsigned long) (inlined)
+               __memset_avx2_unaligned_erms
+               0xffffffff8b600bc7
+               0xffffffff8b4dc024
+               0xffffffff8a4b5bdf
+               0xffffffff8a7d26c2
+               0xffffffff8a7d2147
+               0xffffffff8a7d1dff
+               0xffffffff8a7d0a9b
+               0xffffffff8a86b70c
+
+    33.33%     0.00%  exchange  libc.so.6         [.] __memset_avx2_unaligned_erms
+            |
+            ---__memset_avx2_unaligned_erms
+               0xffffffff8b600bc7
+               0xffffffff8b4dc024
+               0xffffffff8a4b5bdf
+               0xffffffff8a7d26c2
+               0xffffffff8a7d2147
+               0xffffffff8a7d1dff
+               0xffffffff8a7d0a9b
+               0xffffffff8a86b70c
+
+    33.33%    33.33%  exchange  exchange          [.] std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::find(int const&) [clone .isra.0]
+            |
+            ---_start
+               __libc_start_main_impl (inlined)
+               __libc_start_call_main
+               main
+               OrderBookPool::matchIncoming(Order const&, TradeSink&) (inlined)
+               OrderBookPool::addToBook(Order const&) (inlined)
+               std::unordered_map<int, OrderRef, std::hash<int>, std::equal_to<int>, std::allocator<std::pair<int const, OrderRef> > >::find(int const&) (inlined)
+               std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::find(int const&) (inlined)
+
+    33.33%     0.00%  exchange  [unknown]         [.] 0xffffffff8b600bc7
+            |
+            ---0xffffffff8b600bc7
+               0xffffffff8b4dc024
+               0xffffffff8a4b5bdf
+               0xffffffff8a7d26c2
+               0xffffffff8a7d2147
+               0xffffffff8a7d1dff
+               0xffffffff8a7d0a9b
+               0xffffffff8a86b70c
+
+    33.33%     0.00%  exchange  [unknown]         [.] 0xffffffff8b4dc024
+            |
+            ---0xffffffff8b4dc024
+               0xffffffff8a4b5bdf
+               0xffffffff8a7d26c2
+               0xffffffff8a7d2147
+               0xffffffff8a7d1dff
+               0xffffffff8a7d0a9b
+               0xffffffff8a86b70c
+
+    33.33%     0.00%  exchange  [unknown]         [.] 0xffffffff8a4b5bdf
+            |
+            ---0xffffffff8a4b5bdf
+               0xffffffff8a7d26c2
+               0xffffffff8a7d2147
+               0xffffffff8a7d1dff
+               0xffffffff8a7d0a9b
+               0xffffffff8a86b70c
+
+    33.33%     0.00%  exchange  [unknown]         [.] 0xffffffff8a7d26c2
+            |
+            ---0xffffffff8a7d26c2
+               0xffffffff8a7d2147
+               0xffffffff8a7d1dff
+               0xffffffff8a7d0a9b
+               0xffffffff8a86b70c
+
+    33.33%     0.00%  exchange  exchange          [.] OrderBookPool::matchIncoming(Order const&, TradeSink&) (inlined)
+            |
+            ---OrderBookPool::matchIncoming(Order const&, TradeSink&) (inlined)
+               OrderBookPool::addToBook(Order const&) (inlined)
+               std::unordered_map<int, OrderRef, std::hash<int>, std::equal_to<int>, std::allocator<std::pair<int const, OrderRef> > >::find(int const&) (inlined)
+               std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::find(int const&) (inlined)
+
+    33.33%     0.00%  exchange  [unknown]         [.] 0xffffffff8a7d2147
+            |
+            ---0xffffffff8a7d2147
+               0xffffffff8a7d1dff
+               0xffffffff8a7d0a9b
+               0xffffffff8a86b70c
+
+    33.33%     0.00%  exchange  exchange          [.] OrderBookPool::addToBook(Order const&) (inlined)
+            |
+            ---OrderBookPool::addToBook(Order const&) (inlined)
+               std::unordered_map<int, OrderRef, std::hash<int>, std::equal_to<int>, std::allocator<std::pair<int const, OrderRef> > >::find(int const&) (inlined)
+               std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::find(int const&) (inlined)
+
+    33.33%     0.00%  exchange  [unknown]         [.] 0xffffffff8a7d1dff
+            |
+            ---0xffffffff8a7d1dff
+               0xffffffff8a7d0a9b
+               0xffffffff8a86b70c
+
+    33.33%     0.00%  exchange  exchange          [.] std::unordered_map<int, OrderRef, std::hash<int>, std::equal_to<int>, std::allocator<std::pair<int const, OrderRef> > >::find(int const&) (inlined)
+            |
+            ---std::unordered_map<int, OrderRef, std::hash<int>, std::equal_to<int>, std::allocator<std::pair<int const, OrderRef> > >::find(int const&) (inlined)
+               std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::find(int const&) (inlined)
+
+    33.33%     0.00%  exchange  [unknown]         [.] 0xffffffff8a7d0a9b
+            |
+            ---0xffffffff8a7d0a9b
+               0xffffffff8a86b70c
+
+    33.33%     0.00%  exchange  exchange          [.] LiveSet::add(int) (inlined)
+            |
+            ---LiveSet::add(int) (inlined)
+
+    33.33%     0.00%  exchange  exchange          [.] std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::find(int const&) (inlined)
+            |
+            ---std::_Hashtable<int, std::pair<int const, OrderRef>, std::allocator<std::pair<int const, OrderRef> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::find(int const&) (inlined)
+
+
+
+#
+# (Cannot load tips.txt file, please install perf!)
+#
